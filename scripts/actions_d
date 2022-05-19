@@ -1,0 +1,133 @@
+#!/usr/bin/python3
+
+import sys, os, time
+import requests
+import json
+import re
+import datetime as dt
+from datetime import datetime
+import mysql.connector
+
+SLEEPY=5
+WATCHDOG_FN  = os.environ.get('HOME') + "/data/action.wd"
+DB_CONFIG_FN = os.environ.get('HOME') + "/config/db.json"
+
+DB_INFO = {}
+
+with open(DB_CONFIG_FN) as fp:
+  DB_INFO = json.loads(fp.read())
+
+def log_line(msg):
+  d = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+  print( d  + " actions_d:", msg)
+
+
+def update_watchdog(fn = WATCHDOG_FN):
+  with open(fn, "w") as fp:
+    d = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+    fp.write(str(d) + " hello\n")
+
+st = 0
+en = ''
+
+if len(sys.argv) > 1:
+
+  if sys.argv[1] == 'help':
+    print("\n  actions [start_idx] [end_date]\n")
+    sys.exit(0)
+
+  st = int(sys.argv[1])
+
+  if len(sys.argv) > 2:
+    en = sys.argv[2]
+
+url='https://api.fxhash.xyz/graphql'
+headers = {'content-type':'application/json', 'Accept-Charset':'UTF-8'}
+
+data_template="""
+{"query":"query
+  Q($skip: Int, $take: Int, $sort: ActionsSortInput, $filters: ActionFilter ) {
+  actions(skip: $skip, take: $take, sort: $sort, filters: $filters) {
+      id type metadata numericValue createdAt opHash
+      issuer { id name }
+      target { id name }
+      token { id slug flag }
+      objkt { id name slug }
+    }
+  }",
+ "variables":{
+   "skip":<START>,
+   "take":50,
+   "sort":{"createdAt":"DESC"},
+   "filters": { "type_in": [ "MINTED", "MINTED_FROM", "BURN_SUPPLY", "UPDATE_PRICING", "UPDATE_STATE"] }
+  }
+}
+"""
+
+filt_tm  = datetime.now()
+if en != '':
+  filt_tm = datetime.strptime(en, "%Y-%m-%dT%H:%M:%S.%fZ")
+filt_tm -= dt.timedelta(seconds=1)
+
+ACTION_INSERT = "replace into actions (id,data) values (%(id)s, %(data)s)"
+
+active = True
+
+stats = {
+  "processed": 0
+}
+
+while active:
+
+  log_line("processed: " +  str(stats["processed"]))
+
+
+  db_ctx = mysql.connector.connect(user=DB_INFO["user"], password=DB_INFO["password"],
+                                   host="localhost", database=DB_INFO["database"])
+  db_cursor = db_ctx.cursor()
+
+
+  last_en = '...'
+  while True:
+    data = re.sub('\n', ' ', re.sub('<START>', str(st), data_template))
+
+    r = requests.post(url, data=data, headers=headers)
+    if not r.ok:
+      log_line("ERROR: bad request")
+      #print("## ERROR")
+      break
+
+    json_data = r.json();
+    if ("data" in json_data) and ("actions" in json_data["data"]):
+      for a in json_data["data"]["actions"]:
+
+        if "createdAt" in a:
+          last_tm = datetime.strptime(a["createdAt"], "%Y-%m-%dT%H:%M:%S.%fZ")
+          last_en = a["createdAt"]
+
+        if last_tm > filt_tm:
+
+          r = db_cursor.execute(ACTION_INSERT, {"id": a["id"], "data": json.dumps(a)})
+
+          stats["processed"]+=1
+
+          #print(json.dumps(a))
+          #print(">>>", a["id"], r)
+
+    if last_en != '...':
+      last_tm = datetime.strptime(last_en, "%Y-%m-%dT%H:%M:%S.%fZ")
+      if last_tm < filt_tm:
+        #print("ending...")
+        break
+
+
+    st += 50
+
+  db_ctx.commit()
+  db_cursor.close()
+  db_ctx.close()
+
+  time.sleep(SLEEPY)
+  filt_tm = last_tm
+  filt_tm -= dt.timedelta(seconds=1)
+

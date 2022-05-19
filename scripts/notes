@@ -32,3 +32,12 @@ Note that there can be multiple access lists.
 I suspect there's also a 'BLACKLIST' access list, but I'm not sure (haven't found one yet).
 
 `amount` is amount remaining, not total initially.
+
+---
+
+json_extract....
+
+---
+
+
+https://github.com/fxhash/fxhash-api/blob/main/src/Entity/Action.ts

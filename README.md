@@ -12,7 +12,7 @@ Scraping Description
 | `gentkid_actions` | get information about the actions associated with a generative token |
 | `actions [start] [end-date]` | get all actions |
 
-COMPLETED in actions list
+COMPLETED in actions list corresponds to new gentk creation.
 
 Features (todo)
 ---
