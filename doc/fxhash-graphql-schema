@@ -1,0 +1,443 @@
+type Query {
+  actions(filters: ActionFilter, skip: Int = 0, take: Int = 20): [Action!]!
+  generativeTokens(filters: GenerativeTokenFilter, sort: GenerativeSortInput, skip: Int = 0, take: Int = 20): [GenerativeToken!]!
+  lockedGenerativeTokens(skip: Int = 0, take: Int = 20): [GenerativeToken!]!
+  reportedGenerativeTokens(skip: Int = 0, take: Int = 20): [GenerativeToken!]!
+  generativeTokensByIds(ids: [Float!]!): [GenerativeToken!]
+  generativeToken(slug: String, id: Float): GenerativeToken
+  randomGenerativeToken: GenerativeToken
+  marketStats: MarketStatsData!
+  objkts(filters: ObjktFilter, skip: Int = 0, take: Int = 20): [Objkt!]!
+  objkt(slug: String, hash: String, id: Float): Objkt
+  offers(filters: OfferFilter, sort: OffersSortInput, skip: Int = 0, take: Int = 20): [Offer!]!
+  offersByIds(sort: OffersSortInput, ids: [Float!]!): [Offer!]
+  users(skip: Int = 0, take: Int = 20): [User!]!
+  user(name: String, id: String): User
+}
+
+type Action {
+  id: String!
+  type: TokenActionType!
+  metadata: JSONObject
+  createdAt: String!
+  issuer: User
+  target: User
+  token: GenerativeToken
+  objkt: Objkt
+}
+
+"""The type of the action"""
+enum TokenActionType {
+  NONE
+  UPDATE_STATE
+  BURN_SUPPLY
+  MINTED
+  MINTED_FROM
+  COMPLETED
+  TRANSFERED
+  OFFER
+  OFFER_CANCELLED
+  OFFER_ACCEPTED
+}
+
+"""
+The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSONObject
+
+type User {
+  id: String!
+  name: String
+  role: UserRole!
+  flag: UserFlag!
+  metadata: JSONObject
+  metadataUri: String
+  description: String
+  avatarUri: String
+  createdAt: String!
+  updatedAt: String!
+
+  """Explore the gentks owned by users"""
+  objkts(sort: UserCollectionSortInput, filters: ObjktFilter, skip: Int = 0, take: Int = 20): [Objkt!]!
+
+  """
+  Given a list of filters to apply to a user's collection, outputs a list of Generative Tokens returned by the search on the Gentks, without a limit on the number of results.
+  """
+  generativeTokensFromObjktFilters(filters: ObjktFilter): [GenerativeToken!]!
+
+  """Returns the entire collection of a user, in token ID order"""
+  entireCollection: [Objkt!]!
+
+  """
+  Given a list of filters to apply to a user's collection, outputs a list of Authors returned by the search on the Gentks, without a limit on the number of results.
+  """
+  authorsFromObjktFilters(filters: ObjktFilter): [User!]!
+  generativeTokens(skip: Int = 0, take: Int = 20): [GenerativeToken!]!
+  offers(skip: Int = 0, take: Int = 20): [Offer!]!
+  actions(skip: Int = 0, take: Int = 20): [Action!]!
+  actionsAsIssuer: [Action!]!
+  actionsAsTarget: [Action!]!
+}
+
+"""Role of the user"""
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+"""Flag of the user"""
+enum UserFlag {
+  NONE
+  REVIEW
+  SUSPICIOUS
+  MALICIOUS
+  VERIFIED
+}
+
+type Objkt {
+  id: Float!
+  slug: String
+  owner: User
+  name: String
+  assigned: Boolean
+  iteration: Float
+  generationHash: String
+  duplicate: Boolean
+  metadata: JSONObject
+  metadataUri: String
+  tags: [String!]
+  features: [JSONObject!]
+  rarity: Float
+  royalties: Float!
+  createdAt: String!
+  updatedAt: String!
+  assignedAt: String
+  issuer: GenerativeToken!
+  offer: Offer
+  actions: [Action!]!
+}
+
+type GenerativeToken {
+  id: Float!
+  slug: String
+  flag: GenTokFlag!
+  name: String!
+  metadata: JSONObject
+  metadataUri: String
+  tags: [String!]
+  price: Float!
+  originalSupply: Float!
+  supply: Float!
+  balance: Float!
+  enabled: Boolean!
+  royalties: Float!
+  lockedSeconds: Float!
+  lockEnd: DateTime!
+  createdAt: String!
+  updatedAt: String!
+  objktsCount: Float!
+  offers(skip: Int = 0, take: Int = 20, sort: ObjktsSortInput, filters: ObjktFilter): [Objkt!]
+  objkts(skip: Int = 0, take: Int = 20, sort: ObjktsSortInput, featureFilters: [FeatureFilter!], filters: ObjktFilter): [Objkt!]!
+  entireCollection: [Objkt!]!
+  reports: [Report!]!
+  latestObjkts: [Objkt!]!
+  author: User!
+  latestActions: [Action!]!
+  actions(filters: ActionFilter, skip: Int = 0, take: Int = 20): [Action!]!
+  marketStats: MarketStats
+  marketStatsHistory(filters: MarketStatsHistoryInput!): [MarketStatsHistory!]!
+
+  """
+  [HEAVY - please no abuse] Returns a list of the different features and their possible values
+  """
+  features: [JSONObject!]
+}
+
+"""Flag state of Generative Token"""
+enum GenTokFlag {
+  NONE
+  CLEAN
+  REPORTED
+  AUTO_DETECT_COPY
+  MALICIOUS
+  HIDDEN
+}
+
+"""
+The javascript `Date` as string. Type represents date and time as the ISO Date string.
+"""
+scalar DateTime
+
+input ObjktsSortInput {
+  id: String
+  offerPrice: String
+  offerCreatedAt: String
+  createdAt: String
+  rarity: String
+  iteration: String
+}
+
+input ObjktFilter {
+  operator: BaseOperator
+  issuer_in: [Int!]
+  assigned_eq: Boolean
+  offer_ne: String
+  createdAt_lt: String
+  createdAt_gt: String
+  assignedAt_gt: String
+  assignedAt_lt: String
+  mintProgress_eq: GenMintProgressFilter
+  authorVerified_eq: Boolean
+  author_in: [String!]
+  searchQuery_eq: String
+  conditions: [ObjktCondition!]
+}
+
+enum BaseOperator {
+  OR
+  AND
+}
+
+"""Filter for the progress of the mint"""
+enum GenMintProgressFilter {
+  COMPLETED
+  ONGOING
+  ALMOST
+}
+
+input ObjktCondition {
+  operator: BaseOperator
+  issuer_in: [Int!]
+  assigned_eq: Boolean
+  offer_ne: String
+  createdAt_lt: String
+  createdAt_gt: String
+  assignedAt_gt: String
+  assignedAt_lt: String
+  mintProgress_eq: GenMintProgressFilter
+  authorVerified_eq: Boolean
+  author_in: [String!]
+  searchQuery_eq: String
+}
+
+input FeatureFilter {
+  name: String!
+
+  """
+  The serialized value, because GraphQL only supports a single type for inputs
+  """
+  values: [String!]!
+
+  """
+  GraphQL doesn't support multiple types as input, so this fields indicates how to process the value
+  """
+  type: FeatureType!
+}
+
+"""The type of the feature, either boolean, string or number"""
+enum FeatureType {
+  BOOLEAN
+  STRING
+  NUMBER
+}
+
+type Report {
+  id: String!
+  createdAt: String!
+}
+
+input ActionFilter {
+  operator: BaseOperator
+  type_in: [String!]
+  type_eq: String
+  conditions: [ActionCondition!]
+}
+
+input ActionCondition {
+  operator: BaseOperator
+  type_in: [String!]
+  type_eq: String
+}
+
+type MarketStats {
+  floor: Float
+  median: Float
+  listed: Float
+  highestSold: Float
+  lowestSold: Float
+  primVolumeNb: Float
+  primVolumeTz: Float
+  secVolumeTz: Float
+  secVolumeNb: Float
+  secVolumeTz24: Float
+  secVolumeNb24: Float
+  secVolumeTz7d: Float
+  secVolumeNb7d: Float
+  secVolumeTz30d: Float
+  secVolumeNb30d: Float
+  from: DateTime!
+  to: DateTime!
+  generativeToken: GenerativeToken
+}
+
+type MarketStatsHistory {
+  """The floor of the collection at the end of the range covered"""
+  floor: Float
+
+  """The median of the collection at the end of the range covered"""
+  median: Float
+
+  """The number of items listed at the end of the range covered"""
+  listed: Float
+
+  """
+  The highest sale value for an item from the beginning of the collection to the end of the range covered
+  """
+  highestSold: Float
+
+  """
+  The lowest sale value for an item from the beginning of the collection to the end of the range covered
+  """
+  lowestSold: Float
+
+  """
+  The volume (in tezos) of sales on the primary market during the range covered
+  """
+  primVolumeTz: Float
+
+  """
+  The volume (in number) of sales on the primary during the range covered
+  """
+  primVolumeNb: Float
+
+  """
+  The volume (in tezos) of sales on the secondary market during the range covered
+  """
+  secVolumeTz: Float
+
+  """
+  The volume (in number) of sales on the secondary market during the range covered
+  """
+  secVolumeNb: Float
+
+  """The beginning of the range (inclusive) covering those stats [from; to["""
+  from: DateTime
+
+  """The end of the range (exclusive) covering those stats [from; to["""
+  to: DateTime
+}
+
+input MarketStatsHistoryInput {
+  """The beginning (inclusive) of the segment to extract from the history"""
+  from: DateTime!
+
+  """The end (exclusive) of the segment to extract from the history"""
+  to: DateTime!
+
+  """
+  (NOT IMPLEMENTED YET) The number of hours to aggregate each segment in the results (default 1 hour)
+  """
+  aggregation: Float
+}
+
+type Offer {
+  id: Float!
+  price: Float!
+  royalties: Float!
+  createdAt: String!
+  updatedAt: String!
+  issuer: User
+  objkt: Objkt
+}
+
+input UserCollectionSortInput {
+  id: String
+  collectedAt: String
+  assignedAt: String
+  rarity: String
+  relevance: String
+}
+
+input GenerativeTokenFilter {
+  operator: BaseOperator
+  price_lte: Float
+  price_gte: Float
+  supply_lte: Float
+  supply_gte: Float
+  mintProgress_eq: GenMintProgressFilter
+  authorVerified_eq: Boolean
+  searchQuery_eq: String
+  conditions: [GenerativeTokenCondition!]
+}
+
+input GenerativeTokenCondition {
+  operator: BaseOperator
+  price_lte: Float
+  price_gte: Float
+  supply_lte: Float
+  supply_gte: Float
+  mintProgress_eq: GenMintProgressFilter
+  authorVerified_eq: Boolean
+  searchQuery_eq: String
+}
+
+input GenerativeSortInput {
+  lockEnd: String
+  price: String
+  supply: String
+  balance: String
+  relevance: String
+}
+
+type MarketStatsData {
+  generativeTokens(sort: StatsGenTokSortInput, skip: Int = 0, take: Int = 20): [MarketStats!]
+}
+
+input StatsGenTokSortInput {
+  floor: String
+  secVolumeTz: String
+  secVolumeNb: String
+  secVolumeTz24: String
+  secVolumeNb24: String
+  secVolumeTz7d: String
+  secVolumeNb7d: String
+  secVolumeTz30d: String
+  secVolumeNb30d: String
+  primVolumeTz: String
+  primVolumeNb: String
+  lowestSold: String
+  highestSold: String
+  median: String
+  listed: String
+}
+
+input OfferFilter {
+  operator: BaseOperator
+  price_gte: String
+  price_lte: String
+  fullyMinted_eq: Boolean
+  tokenSupply_gte: Float
+  tokenSupply_lte: Float
+  authorVerified_eq: Boolean
+  searchQuery_eq: String
+  conditions: [OfferCondition!]
+}
+
+input OfferCondition {
+  operator: BaseOperator
+  price_gte: String
+  price_lte: String
+  fullyMinted_eq: Boolean
+  tokenSupply_gte: Float
+  tokenSupply_lte: Float
+  authorVerified_eq: Boolean
+  searchQuery_eq: String
+}
+
+input OffersSortInput {
+  price: String
+  createdAt: String
+  relevance: String
+}
+

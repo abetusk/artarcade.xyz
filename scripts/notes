@@ -1,0 +1,34 @@
+```
+./gentkid 13087 | jq .
+...
+  "reserves": [
+    {
+      "data": {
+        "tz1PvmW1WCvv9YBq6pGMrzVQveiuXDDCxa54": 0,
+        "tz1QeBeFer1M7auxG4DwuzQ2V9zVRuyvJ1Cv": 0,
+        "tz1SioLF6ViffZjf9REHXCdJe4SjyuS4D9s6": 1,
+        "tz1T5NfkdPfhkXzYx8akPkdznxSgU1Uf5jEG": 1,
+        "tz1Y9HHJpZBQdm6xvf9C1nzQYKAU5kifqZLs": 0,
+        "tz1apyQwxp1tfiQSp2gL3pCb5oVfwke2mVdw": 0,
+        "tz1c8bog1Hw3c2AUYUcsJrKs1hw9CTfFTeCe": 0,
+        "tz1d1SX5kiVtHYyQE9i5FvLVW6GuJboXMM7w": 1,
+        "tz1iWnF17dA9sCtZYtQQgPrpyNsEjdHmFQae": 1,
+        "tz2B8h77aQcDaWwFEV6s4vkWM4SkBX22N5sn": 0,
+        "tz2C571mwS7wtxyQiqTKt9xWsxPc2TwK5ENa": 1,
+        "tz2FsA93XsovbPwPJY88mJ3Zg6PsYoeERaM1": 0,
+        "tz2GRzd2coKiwbFWN9eauk7b1Raewa4Ebw7V": 1
+      },
+      "amount": 6,
+      "method": "WHITELIST"
+    }
+  ],
+...
+```
+
+The `0` denotes there are 0 reserves left for that person (presumably because they used them all up).
+
+Note that there can be multiple access lists.
+
+I suspect there's also a 'BLACKLIST' access list, but I'm not sure (haven't found one yet).
+
+`amount` is amount remaining, not total initially.

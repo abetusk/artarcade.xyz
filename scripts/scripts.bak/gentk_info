@@ -1,0 +1,15 @@
+#!/bin/bash
+
+gentkid=$1
+
+if [[ "$gentkid" == "" ]] ; then
+  echo "provide gentk ID"
+  exit -1
+fi
+
+curl --request POST \
+    --header 'content-type: application/json' \
+    --url 'https://api.fxhash.xyz/graphql' \
+    -s \
+    --data '{"query":"query ($ids: [Float!]!) { generativeTokensByIds(ids: $ids) { id slug name originalSupply supply price author { id name } actions { id type createdAt } metadataUri } }","variables":{"ids":['$gentkid']}}'
+

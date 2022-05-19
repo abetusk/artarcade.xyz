@@ -1,0 +1,16 @@
+#!/bin/bash
+
+idir="./data/user"
+
+mkdir -p data/user_bountiful
+
+for ifn in `ls $idir/user_*` ; do
+  #echo $ifn
+  for uid in `jq -c '.data.users[] | [ .id, ( .generativeTokens | length ) ] '  $ifn | grep ',20]$' | jq -r -c '.[0]'` ; do
+    echo "##::$uid::"
+    ./user_gentk "$uid" > "data/user_bountiful/$uid.json"
+  done
+
+
+
+done

@@ -1,0 +1,63 @@
+#!/bin/bash
+
+id=11168
+st=0
+tk=20
+
+x='query ($generativeTokenId: Float, $skip: Int, $take: Int) {
+  generativeToken(id: $generativeTokenId) {
+    id
+    slug
+    name
+    metadataUri
+    generativeUri
+    thumbnailUri
+    displayUri
+    tags
+    royalties
+    createdAt
+    originalSupply
+    pricingFixed {
+      price
+      opensAt
+    }
+    pricingDutchAuction {
+      levels
+      restingPrice
+      decrementDuration
+      opensAt
+      finalPrice
+    }
+    actions(skip: $skip, take: $take) {
+      id
+      type
+      opHash
+      createdAt
+      issuer {
+        id
+        name
+      }
+    }
+  }
+}'
+
+y='{
+  "generativeTokenId": '$id',
+  "skip": '$st',
+  "take": '$tk',
+  "sort": { "createdAt":"DSC"}
+}'
+
+xx=`echo "$x" | tr -d '\n'`
+yy=`echo "$y" | tr -d '\n'`
+#echo "$xx" "$yy"
+
+#fin='{"query":"'"$xx"'",
+
+
+curl --request POST \
+  --header 'content-type: application/json' \
+  --url 'https://api.fxhash.xyz/graphql' \
+  -s \
+  --data  '{"query":"'"$xx"'","variables":'"$yy"'}'
+

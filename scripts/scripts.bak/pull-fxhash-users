@@ -1,0 +1,18 @@
+#!/bin/bash
+
+n=22000
+
+mkdir -p data/user
+
+for st in `seq 0 50 $n` ; do
+  echo $st
+	curl -s --request POST \
+			--header 'content-type: application/json' \
+			--url 'https://api.fxhash.xyz/graphql' \
+			--data '{"query":"query Users($take: Int, $skip: Int) {\n  users(take: $take, skip: $skip) {\n    id name createdAt\n    generativeTokens {\n      id slug name author { id name }\n    }\n    \n  }\n}","variables":{"skip":'$st',"take":50}}' | \
+      jq . > data/user/user_s${st}_n50.json
+
+
+
+
+done

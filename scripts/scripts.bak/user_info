@@ -1,0 +1,14 @@
+#!/bin/bash
+
+id="$1"
+
+if [[ "$id" == "" ]] ; then
+  echo "provide address"
+  exit
+fi
+
+curl -s --request POST \
+    --header 'content-type: application/json' \
+    --url 'https://api.fxhash.xyz/graphql' \
+    --data '{"query":"query User($userId: String) {\n  user(id: $userId) {\n    id name type flag metadataUri avatarUri }\n}","variables":{"userId":"'$id'"}}'
+

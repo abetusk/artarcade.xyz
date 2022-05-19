@@ -1,0 +1,69 @@
+#!/bin/bash
+
+GET_USERS=0
+GET_USERS_BOUNTIFUL=0
+PROCESS_GENTK_LIST=0
+
+##
+## users
+##
+if [[ "$GET_USERS" == 1 ]] ; then
+  echo "## RUNNING 'pull-fxhash-users' to grab all users (-> data/user)"
+  ./pull-fxhash-users
+fi
+
+####
+#### fill in other user information
+####
+if [[ "$GET_USERS_BOUNTIFUL" == 1 ]]; then
+  echo "## RUNNING 'user_bountiful_process' to grab all gentks from users with >20 projects (-> data/user_bountiful)"
+  ./user_bountiful_process
+fi
+
+##
+## gentk (ids)
+##
+if [[ "$PROCESS_GENTK_LIST" == 1 ]] ; then
+  rm -f gentk_id.list gentk_id.list.0 gentk_id.list.1
+
+  find ./data/user/  -name '*.json' -type f | \
+    xargs -n1 -I{} jq -r -c '.data.users[].generativeTokens[].id' {} >> gentk_id.list.0
+
+  find ./data/user_bountiful/  -name '*.json' -type f | \
+    xargs -n1 -I{} jq -r -c '.data.user.generativeTokens[].id' {} >> gentk_id.list.1
+
+  cat gentk_id.list.0 gentk_id.list.1 | sort -u -n > gentk_id.list
+fi
+
+hdr="##gentk.id,slug,name,origsupply,cursupply,price,author,author.name,uri,created,issuer,price"
+
+mkdir -p data/nft
+echo "$hdr" > data/nft/HEADER
+
+rm -f data/nft/gen_nft.ajson
+
+mkdir -p .tmp
+
+##
+## gentk (individual)
+##
+
+for gentk_id in `cat gentk_id.list` ; do
+
+  echo "## gentk_id: $gentk_id"
+
+  fn=".tmp/$gentk_id.ojson"
+  ./gentk_actions $gentk_id > $fn
+
+  jq -r -c '.data.generativeTokensByIds[] | [ .id, .slug, .name, .originalSupply, .supply, .price, .author.id, .author.name, .metadataUri ]' $fn | \
+    head -n1 |  \
+    sed 's/^\[//'  | \
+    sed 's/\]$//' > $fn.pfx
+
+  #jq -r -c '.data.generativeTokensByIds[].actions[] | [ ' `cat $fn.pfx ` ' , .createdAt, .issuer.id, (.metadata.price | tonumber) ]' $fn >> data/nft/gen_nft.ajson
+
+  jq -r -c  " $( echo '.data.generativeTokensByIds[].actions[] | [ ' $( cat $fn.pfx ) ', .createdAt, .issuer.id, (.metadata.price | tonumber)  ] ' ) " $fn >> data/nft/gen_nft.ajson
+
+done
+
+echo "## "

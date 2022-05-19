@@ -1,0 +1,35 @@
+#!/bin/bash
+
+uid=$1
+st=$2
+
+if [[ "$uid" == "" ]] ; then
+  echo "provide userid (wallet address)"
+  exit -1
+fi
+
+if [[ "$st" == "" ]] ; then
+  st=0
+fi
+
+while [[ true ]] ; do
+
+  curl -s --request POST \
+      --header 'content-type: application/json' \
+      --url 'https://api.fxhash.xyz/graphql' \
+      --data '{"query":"query User($userId: String, $take: Int, $skip: Int) {\n  user( id: $userId) {\n  generativeTokens(take: $take, skip:$skip) { id slug name createdAt } } } ","variables":{"userId":"'$uid'","take":50,"skip":'$st'}}'
+
+  n=`  curl -s --request POST \
+      --header 'content-type: application/json' \
+      --url 'https://api.fxhash.xyz/graphql' \
+      --data '{"query":"query User($userId: String, $take: Int, $skip: Int) {\n  user( id: $userId) {\n  generativeTokens(take: $take, skip:$skip) { id slug name createdAt } } } ","variables":{"userId":"'$uid'","take":50,"skip":'$st'}}' | jq '.data.user.generativeTokens | length'`
+
+  st=`echo "$st + 50" | bc`
+
+  if [[ "$n" != "50" ]] ; then
+    break
+  fi
+
+done
+
+

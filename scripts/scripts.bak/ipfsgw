@@ -1,0 +1,11 @@
+#!/bin/bash
+
+id=$1
+url='https://gateway.fxhash.xyz/ipfs/'
+
+if [[ "$id" == "" ]] ; then
+  echo "provide hash"
+  exit
+fi
+
+curl "$url"$id
