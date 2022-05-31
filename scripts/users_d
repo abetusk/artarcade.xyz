@@ -3,7 +3,7 @@
 # To the extent possible under law, the person who associated CC0 with
 # this project has waived all copyright and related or neighboring rights
 # to this project.
-#
+# 
 # You should have received a copy of the CC0 legalcode along with this
 # work.  If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 #
@@ -17,7 +17,7 @@ from datetime import datetime
 import mysql.connector
 
 SLEEPY=5
-WATCHDOG_FN  = os.environ.get('HOME') + "/data/action.wd"
+WATCHDOG_FN  = os.environ.get('HOME') + "/data/user.wd"
 DB_CONFIG_FN = os.environ.get('HOME') + "/config/db.json"
 
 DB_INFO = {}
@@ -27,8 +27,7 @@ with open(DB_CONFIG_FN) as fp:
 
 def log_line(msg):
   d = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
-  print( d  + " actions_d:", msg)
-
+  print( d  + " users_d:", msg)
 
 def update_watchdog(fn = WATCHDOG_FN):
   with open(fn, "w") as fp:
@@ -41,7 +40,7 @@ en = ''
 if len(sys.argv) > 1:
 
   if sys.argv[1] == 'help':
-    print("\n  actions [start_idx] [end_date]\n")
+    print("\n  users [start_idx] [end_date]\n")
     sys.exit(0)
 
   st = int(sys.argv[1])
@@ -53,40 +52,34 @@ url='https://api.fxhash.xyz/graphql'
 headers = {'content-type':'application/json', 'Accept-Charset':'UTF-8'}
 
 data_template="""
-{"query":"query
-  Q($skip: Int, $take: Int, $sort: ActionsSortInput, $filters: ActionFilter ) {
-  actions(skip: $skip, take: $take, sort: $sort, filters: $filters) {
-      id type metadata numericValue createdAt opHash
-      issuer { id name }
-      target { id name }
-      token { id slug flag }
-      objkt { id name slug }
-    }
-  }",
- "variables":{
-   "skip":<START>,
-   "take":50,
-   "sort":{"createdAt":"DESC"},
-   "filters": { "type_in": [  "MINTED", "MINTED_FROM",
-                              "BURN_SUPPLY", "UPDATE_PRICING", "UPDATE_STATE"] }
+{ "query": "query
+  Q($sort: UserSortInput, $skip: Int, $take: Int) {
+  users(sort: $sort, skip: $skip, take: $take) {
+    id
+    name
+    createdAt
+    avatarUri
   }
+}","variables" : {
+  "skip": <START>,
+  "take": 50,
+  "sort": { "createdAt": "DESC" }
+}
 }
 """
-#                              "COMPLETED", "LISTING_V1", "LISTING_V2", "LISTING_V2_ACCEPTED", "GENTK_SIGNED", "TRANSFERED",
 
 filt_tm  = datetime.now()
 if en != '':
   filt_tm = datetime.strptime(en, "%Y-%m-%dT%H:%M:%S.%fZ")
 filt_tm -= dt.timedelta(seconds=1)
 
-ACTION_INSERT = "replace into actions (action_id,data) values (%(action_id)s, %(data)s)"
+USER_INSERT = "replace into users (user_id,data) values (%(user_id)s, %(data)s)"
 
 active = True
 
 stats = {
   "processed": 0
 }
-
 
 last_date_entry_str = 'init'
 last_date_entry_tm = {}
@@ -104,21 +97,20 @@ while active:
   st = 0
   end_reached = False
   while not end_reached:
-
     data = re.sub('\n', ' ', re.sub('<START>', str(st), data_template))
 
     r = requests.post(url, data=data, headers=headers)
     if not r.ok:
-      log_line("ERROR: bad request")
+      log_line("ERROR: bad request" + str(r))
       break
 
     json_data = r.json();
 
     count = 0
-    if ("data" in json_data) and ("actions" in json_data["data"]):
+    if ("data" in json_data) and ("users" in json_data["data"]):
       max_tm = datetime.now()
       max_str = 'init'
-      for idx,a in enumerate(json_data["data"]["actions"]):
+      for idx,a in enumerate(json_data["data"]["users"]):
 
         if "createdAt" in a:
 
@@ -132,7 +124,7 @@ while active:
             max_tm = _tm
 
           if _tm > filt_tm:
-            r = db_cursor.execute(ACTION_INSERT, {"action_id": a["id"], "data": json.dumps(a)})
+            r = db_cursor.execute(USER_INSERT, {"user_id": a["id"], "data": json.dumps(a)})
             stats["processed"]+=1
             count+=1
           else:
@@ -162,3 +154,30 @@ while active:
     filt_tm = last_date_entry_tm
     filt_tm -= dt.timedelta(seconds=1)
 
+
+#
+#      for a in json_data["data"]["users"]:
+#
+#        if "createdAt" in a:
+#          last_tm = datetime.strptime(a["createdAt"], "%Y-%m-%dT%H:%M:%S.%fZ")
+#          last_en = a["createdAt"]
+#
+#        if last_tm > filt_tm:
+#          r = db_cursor.execute(USER_INSERT, {"user_id": a["id"], "data": json.dumps(a)})
+#          stats["processed"]+=1
+#
+#    if last_en != '...':
+#      last_tm = datetime.strptime(last_en, "%Y-%m-%dT%H:%M:%S.%fZ")
+#      if last_tm < filt_tm:
+#        break
+#
+#    st += 50
+#
+#  db_ctx.commit()
+#  db_cursor.close()
+#  db_ctx.close()
+#
+#  time.sleep(SLEEPY)
+#  filt_tm = last_tm
+#  filt_tm -= dt.timedelta(seconds=1)
+#
